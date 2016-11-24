@@ -131,6 +131,37 @@ define(function(require, exports, module) {
 
                 // disable multiple selection
                 fileDialog.tree.on("changeSelection", disableMultiSelect);
+
+                // expand CWD of focussed terminal (if any) in file dialog
+                // TODO support "Save As" dialog
+                // TODO handle directories under ~
+                var tab = tabManager.focussedTab;
+                if (tab && tab.editorType === "terminal") {
+                    // try finding terminal prompt (assumes prompt contains CWD)
+                    var session = tab.editor.ace.getSession();
+                    var row = session.getLength() - 1;
+                    var re = /([~\/](?:[^\\\s'"\(<]|\\.)*)[^$]*?\$/;
+                    var path;
+                    do {
+                        var matches = re.exec(session.getLine(row--));
+
+                        // extract path from prompt (if possible)
+                        if (matches)
+                            path = matches[1];
+                    }
+                    while(!path && row >= 0);
+
+                    if (path) {
+                        // workspace directory is root for file dialog's tree
+                        path = path.replace(/^~/, c9.home).replace(c9.workspaceDir, "") || "/";
+
+                        // TODO refresh tree first?
+
+                        // expand and select directory
+                        txtDirectory.setAttribute("value", path);
+                        txtDirectory.dispatchEvent("keyup", {keyCode: 13});
+                    }
+                }
             }, plugin);
 
             // clean up to avoid affecting other file dialogs
